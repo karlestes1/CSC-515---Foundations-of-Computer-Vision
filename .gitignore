@@ -1,0 +1,6 @@
+*.pages
+*.pdf
+CT\ 1/
+*.zip
+.DS_Store
+.vscode/*
