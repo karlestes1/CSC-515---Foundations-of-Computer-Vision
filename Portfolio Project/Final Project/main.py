@@ -370,6 +370,8 @@ class FaceFinder():
 
         return found_eyes
 
+
+
 def load_images(paths):
     '''Attempts to load all images from the provided paths'''
 
@@ -386,7 +388,6 @@ def load_images(paths):
             print(f"WARNING: Unable to load image at {path}")
 
     return images
-
 
 def interactive_image_viewer(images : list, window_name : str = 'Default'):
     '''
@@ -409,7 +410,7 @@ def interactive_image_viewer(images : list, window_name : str = 'Default'):
     if args.debug:
         print("Press the following keys to interact with the images:\n\tn - next image\n\tp - previous images\n\te/'esc' - close image viewer\n")
 
-    while viewing:
+    while viewing: # Loop until closed
         cv.imshow(window_name, images[cur])
         k = cv.waitKey(1) & 0xFF # Wait for 1 ms each time
 
@@ -460,8 +461,6 @@ def save_images(images: list, names: list = None, dir: str = None, type=".jpg"):
             cv.imwrite(os.path.join(dir, f"{i+1}{type}"), img)
         else:
             cv.imwrite(os.path.join(dir, f"{names[i]}{type}"), img)
-        
-    
     
 
 if __name__ == "__main__":
@@ -494,7 +493,7 @@ if __name__ == "__main__":
     parser.add_argument('--min_neighbors_face', type=int, default=4, help="Min_neighbors for face cascade classification")
     parser.add_argument('--min_neighbors_eyes', type=int, default=4, help="Min_neighbors for eye cascade classification")
 
-    # TODO - Add args for min_size params?
+    # REVIEW - Add args for min_size params?
     
     parser.add_argument('-d', '--debug', action='store_true', default=False, help="Add flag to enable thorough printing of program steps and information")
 
@@ -533,11 +532,23 @@ if __name__ == "__main__":
     
     gamma_corrected = processor.adaptive_gamma_correction(images)
 
+    if args.debug:
+        interactive_image_viewer(gamma_corrected, "Gamma Corrected Images")
+
     grayscale = processor.convert_to_grayscale(gamma_corrected)
+
+    if args.debug:
+        interactive_image_viewer(grayscale, "Grayscale Images")
 
     dog = processor.difference_of_gaussian(grayscale, args.k_size1, args.sigma1, args.k_size2, args.sigma2)
 
+    if args.debug:
+        interactive_image_viewer(dog, "Difference of Gaussian Images")
+
     equalized = processor.contrast_equalization(dog, args.clip_limit, args.grid_size)
+
+    if args.debug:
+        interactive_image_viewer(equalized, "Constrast Equalized Images")
 
     # Save images
     print("Saving preprocessed images for later viewing")
@@ -548,10 +559,12 @@ if __name__ == "__main__":
     '''
     Detection Pipeline
     ------------------
-    Find Faces -> Rotate -> Redetect -> Scale -> Save
+    Find Faces -> Rotate -> Redetect -> Scale -> Blur -> Save
     '''
     # Facial Detections
     # NOTE - Add args.min_size_face if min_size arg added to argparser
     image_face_list = face_finder.find_faces(equalized, args.scale_factor_face, args.min_neighbors_face)
 
     # TODO - Finish Main image processing code
+    
+    
