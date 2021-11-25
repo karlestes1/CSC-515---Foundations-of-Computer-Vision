@@ -46,6 +46,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import math
+import os
+import progressbar
 
 class ImageProcessor():
     '''An object which contains processes (implemented with IOpenCV) that can be done to an image'''
@@ -386,9 +388,81 @@ def load_images(paths):
     return images
 
 
-# TODO - Function for viewing/graphing images
+def interactive_image_viewer(images : list, window_name : str = 'Default'):
+    '''
+    Uses OpenCV to create an interactive image viewer
 
-# TODO - Functions to save images
+    Keybindings are as follows
+    - n : Next Image
+    - p : Previous Image
+    - e/'esc' : close
+    '''
+
+    if (images is None) or (len(images) == 0) :
+        print("ERROR: Cannot view images that do not exist!")
+        return
+
+    cur = 0
+    viewing = True
+    window = cv.namedWindow(window_name)
+
+    if args.debug:
+        print("Press the following keys to interact with the images:\n\tn - next image\n\tp - previous images\n\te/'esc' - close image viewer\n")
+
+    while viewing:
+        cv.imshow(window_name, images[cur])
+        k = cv.waitKey(1) & 0xFF # Wait for 1 ms each time
+
+        if k == 27 or k == ord('e'):
+            viewing = False
+        elif k == ord('n'):
+            cur = cur + 1 if cur < (len(images)-1) else 0
+        elif k == ord('p'):
+            cur = cur - 1 if cur > 0 else (len(images)-1)
+
+    cv.destroyAllWindows() # Destroy all open windows
+
+def save_images(images: list, names: list = None, dir: str = None, type=".jpg"):
+    '''
+    Saves a list of images with the specified type using OpenCV
+    
+    Parameters
+    ----------
+    - images : list
+        The list of images that are to be saved
+    - names : list[str]
+        Names for each of the images (error will be thrown if mistmatch in len)
+    - dir : str
+        Path to folder to save images (default to local) (will create directory if it doesnt exist)
+    - type : str
+        Denotes the file type that the image will be saved as
+    '''
+
+    
+    if images is None or len(images) == 0:
+        print("ERROR: Cannot save images that don't exist")
+        return
+
+    if (not (names is None)) and len(images) != len(names):
+        print("ERROR: Mismatch in length of image list and length of names to be assigned during save")
+        return
+
+    if not (dir is None):
+        is_dir = os.path.isdir(dir)
+
+        # If folder doesn't exist, then create it.
+        if not is_dir:
+            os.makedirs(dir)
+            print(f"Created dir={dir}")
+    
+    for i,img in enumerate(images):
+        if names is None:
+            cv.imwrite(os.path.join(dir, f"{i+1}{type}"), img)
+        else:
+            cv.imwrite(os.path.join(dir, f"{names[i]}{type}"), img)
+        
+    
+    
 
 if __name__ == "__main__":
      
@@ -402,6 +476,9 @@ if __name__ == "__main__":
 
     # Paths for images
     parser.add_argument('-i', '--images', nargs='+', required=True, help='Individual file paths for each image you would like to load in')
+
+    # Names for images
+    parser.add_argument('--names', nargs='+', required=False, default=None, help='List of names to save each image as (NOTE: number of names should equal number of images provided)')
 
     # ImageProcessor() Args
     parser.add_argument('--k_size1', nargs=2, type=int, default=[3,3], metavar=('WIDTH', 'HEIGHT'), help="Two integers corresponding to size of first kernel for DOG filtering")
@@ -439,6 +516,10 @@ if __name__ == "__main__":
         print("ERROR: Unable to load any images. Terminating script...")
         sys.exit(4)
 
+    if args.debug:
+        print("Image viewer for original images")
+        interactive_image_viewer(images, "Unmodified Images")
+
     # Load image processor and face finder
     processor = ImageProcessor()
     face_finder = FaceFinder(args.face_cascade_path, args.eye_cascade_path)
@@ -458,6 +539,11 @@ if __name__ == "__main__":
 
     equalized = processor.contrast_equalization(dog, args.clip_limit, args.grid_size)
 
+    # Save images
+    print("Saving preprocessed images for later viewing")
+    for group,dir in progressbar.progressbar([[gamma_corrected,'gamma_corrected'], [grayscale,'grayscale'], [dog,'difference_of_gaussian'], [equalized,'contrast_equalized']]):
+        save_images(gamma_corrected, args.names, dir)
+
     # TODO - Detection Pipeline
     '''
     Detection Pipeline
@@ -466,4 +552,6 @@ if __name__ == "__main__":
     '''
     # Facial Detections
     # NOTE - Add args.min_size_face if min_size arg added to argparser
-    faces = face_finder.find_faces(equalized, args.scale_factor_face, args.min_neighbors_face)
+    image_face_list = face_finder.find_faces(equalized, args.scale_factor_face, args.min_neighbors_face)
+
+    # TODO - Finish Main image processing code
