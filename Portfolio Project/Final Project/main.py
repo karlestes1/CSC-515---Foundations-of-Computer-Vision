@@ -462,9 +462,7 @@ def save_images(images: list, names: list = None, dir: str = None, type=".jpg"):
         else:
             cv.imwrite(os.path.join(dir, f"{names[i]}{type}"), img)
     
-
-if __name__ == "__main__":
-     
+def _create_argparser():
     parser = argparse.ArgumentParser()
 
     # Paths for cascade files
@@ -496,6 +494,12 @@ if __name__ == "__main__":
     # REVIEW - Add args for min_size params?
     
     parser.add_argument('-d', '--debug', action='store_true', default=False, help="Add flag to enable thorough printing of program steps and information")
+
+    return parser
+
+if __name__ == "__main__":
+     
+    parser = _create_argparser()
 
     args = parser.parse_args()
 
@@ -565,6 +569,24 @@ if __name__ == "__main__":
     # NOTE - Add args.min_size_face if min_size arg added to argparser
     image_face_list = face_finder.find_faces(equalized, args.scale_factor_face, args.min_neighbors_face)
 
+    # TODO - Function to write bounding boxes to face
+
+    # Extract found faces
+    faces = []
+    print("Extracting faces for eye detection")
+    for image in progressbar.progressbar(image_face_list):
+        for img, faces in image:
+            for face,coords in faces:
+                faces.append(face)
+
+
+    if args.debug:
+        print("Image viewer for first faces detected")
+        interactive_image_viewer(faces, "First Round of Face Processing")
+
+
+    # TODO - Eye Detection
+
     # TODO - Finish Main image processing code
-    
+
     
