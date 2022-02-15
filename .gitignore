@@ -1,6 +1,13 @@
 *.pages
 *.pdf
-CT\ 1/
 *.zip
 .DS_Store
 .vscode/*
+Discussion\ Post\ 7/
+Discussion\ Post\ 2/
+CT\ 1/
+CT\ 2/
+
+!CT\ 4/*.pdf
+!CT\ 5/*.pdf
+!CT\ 6/*.pdf

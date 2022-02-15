@@ -348,7 +348,10 @@ def rotate_images(images: list):
 def _crop_and_scale_face(img, boxes):
 
     # Find Left and Right Eye Boxes
+    print(f"Boxes:{boxes}")
     l_eye,r_eye = boxes[1]
+    print(f"Left Eye:{l_eye}")
+    print(f"Right Eye:{r_eye}")
     
     if r_eye[0] < l_eye[0]:
         r_eye, l_eye = l_eye, r_eye
@@ -412,7 +415,6 @@ def write_images_with_boundingBoxes(images_with_boxes, path, prefix):
         cv.imwrite(file_path, cp)
 
     print("Images saved")
-
 
 def write_images(images, path, prefix):
     ''' Saves all passed images to the /data/processed folder'''
