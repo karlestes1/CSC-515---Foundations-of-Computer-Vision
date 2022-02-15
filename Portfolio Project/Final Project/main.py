@@ -12,7 +12,7 @@ that could lead to a person or personal data identification, such as the person�
 The goal of this project is to write algorithms for face detection and feature blurring.  Select three color images from 
 the web that meet the following requirements:
 
-Two images containing human subjects facing primarily to the front and one image with a non-human subject.
+- Two images containing human subjects facing primarily to the front and one image with a non-human subject.
 - At least one image of a human subject should contain that person’s entire body.
 - At least one image should contain multiple human subjects.
 - At least one image should display a person’s face far away.
@@ -27,10 +27,6 @@ After the faces have been successfully detected, you will want to process only t
 blurring to hide the eyes.  Although the eye classifier (Links to an external site.) is fairly accurate, it is important that all 
 faces are centered, rotated, and scaled so that the eyes are perfectly aligned. If expected results are not achieved, implement 
 more image processing for optimal eye recognition. Now, apply a blurring method to blur the eyes out in the extracted image.
-
-File Description
-----------------
-TODO - Add file description
 
 Comment Anchors
 ---------------
@@ -182,7 +178,7 @@ class ImageProcessor():
 
         return dog_images
     
-    def contrast_equalization(images: list, clip_limit: float = 40.0, grid_size : tuple = (8,8)):
+    def contrast_equalization(self, images: list, clip_limit: float = 40.0, grid_size : tuple = (8,8)):
         '''Applies contrast limited adaptive histogram equalization to all images in the list'''
         
         equalized_images = []
@@ -258,7 +254,52 @@ class ImageProcessor():
         rotated_mat = cv.warpAffine(mat, rotation_mat, (bound_w, bound_h))
         return rotated_mat
 
-    # TODO - Eye Blurring
+    def scale_faces(self, faces, size=(60,70)):
+        '''Takes a list of images (faces) and scales them to the provided size (w,h)'''
+        scaled = []
+
+        for face in faces:
+            scaled.append(cv.resize(face, size, interpolation=cv.INTER_AREA))
+
+        return scaled
+
+    def gaussian_blur_images(self, images, kernel=(3,3), stdev=0):
+        ''' Takes a list of images and applies gaussian blur '''
+        blurred = []
+
+        for img in images:
+            blurred.append(cv.GaussianBlur(img,kernel,stdev))
+
+        return blurred
+
+    def blur_eyes(self, faces_and_eyes: list):
+        blurred_images = []
+
+        for i, face in enumerate(faces_and_eyes):
+
+            # Get Left and Right Eyes
+            if face[1] != None:
+
+                l_eye,r_eye = face[1]
+
+                x,y,w,h = l_eye
+                xf = x + w
+                yf = y + h
+
+                for i in range(9):
+                    face[0][y:yf,x:xf] = cv.GaussianBlur(face[0][y:yf,x:xf], (3,3), 2)
+
+                x,y,w,h = r_eye
+                xf = x + w
+                yf = y + h
+
+                for i in range(9):
+                    face[0][y:yf,x:xf] = cv.GaussianBlur(face[0][y:yf,x:xf], (3,3), 2)
+
+                blurred_images.append(face[0])
+
+        return blurred_images
+        
 
 class FaceFinder():
 
@@ -273,12 +314,20 @@ class FaceFinder():
         '''
         self.face_cascade = cv.CascadeClassifier()
         self.eye_cascade = cv.CascadeClassifier()
+        self.left_eye_cascade = cv.CascadeClassifier()
+        self.right_eye_cascade = cv.CascadeClassifier()
+        self.processor = ImageProcessor()
 
         if not self.face_cascade.load(face_cascade_path):
             print('--(!) ERROR loading face cascade')
             sys.exit(2)
         if not self.eye_cascade.load(eye_cascade_path):
             print('--(!) ERROR loading eye cascade')
+        if not self.left_eye_cascade.load("classifiers/haarcascade_leye.xml"):
+            print('--(!) ERROR loading left eye cascade')
+            sys.exit(2)
+        if not self.right_eye_cascade.load("classifiers/haarcascade_reye.xml"):
+            print('--(!) ERROR loading right eye cascade')
 
     def find_faces(self, images : list, scale = 1.2, min_neighbors = 4, min_size : tuple = None):
         '''
@@ -312,6 +361,10 @@ class FaceFinder():
             faces = self.face_cascade.detectMultiScale(img, scale, min_neighbors, minSize=min_size)
 
             for face in faces:
+
+                if args.debug:
+                    print("Found a face!")
+                
                 (x,y,w,h) = face
                 faceROI = img[y:y+h, x:x+w]
 
@@ -350,6 +403,10 @@ class FaceFinder():
 
             eyes = self.eye_cascade.detectMultiScale(face, scale, min_neighbors, minSize=min_size)
 
+            if len(eyes) != 2: # Try Blurring
+                temp = self.processor.gaussian_blur_images([face])
+                eyes = self.eye_cascade.detectMultiScale(temp[0], scale, min_neighbors, minSize=min_size)
+
             if len(eyes) == 2:
 
               # Check if angle is greater than 15 degrees
@@ -361,12 +418,51 @@ class FaceFinder():
                 # Calculate angle of rotation
                 theta_rad = math.atan2(r_eye[1] - l_eye[1], r_eye[0]-l_eye[0])
                 theta_deg = math.degrees(theta_rad)
-                if(theta_deg < 15):  
+                if(theta_deg < 30):  
                     found_eyes.append([face, [l_eye,r_eye]])
                 else:
                     found_eyes.append([face, None])
             else:
-                found_eyes.append([face, None])
+                # Attempt left and right eyes independently
+                l_eyes = self.left_eye_cascade.detectMultiScale(face, scale, min_neighbors, minSize=min_size)
+                if len(l_eyes) == 0:
+                    print("WARNING: Unable to detect eyes in image")
+                    found_eyes.append([face, None])
+                else:
+                    r_eyes = self.right_eye_cascade.detectMultiScale(face,scale,min_neighbors,minSize=min_size)
+
+                    if len(r_eyes) == 0:
+                        print("WARNING: Unable to detect eyes in image")
+                        found_eyes.append([face, None])
+                    else:
+                        
+                        l_eye = [-1,0,0,0]
+                        r_eye = [-1,0,0,0]
+
+                        for eye in l_eyes:
+                            if l_eye[0] == -1:
+                                l_eye = eye
+                            elif eye[0] < l_eye[0]:
+                                l_eye = eye
+
+                        for eye in r_eyes:
+                            if r_eye[0] == -1:
+                                r_eye = eye
+                            elif eye[0] > r_eye[0]:
+                                l_eye = eye
+
+                        
+                        if r_eye[0] < l_eye[0]:
+                            r_eye, l_eye = l_eye, r_eye
+
+                        # Calculate angle of rotation
+                        theta_rad = math.atan2(r_eye[1] - l_eye[1], r_eye[0]-l_eye[0])
+                        theta_deg = math.degrees(theta_rad)
+                        if(theta_deg < 15):  
+                            found_eyes.append([face, [l_eye,r_eye]])
+                        else:
+                            print("WARNING: Unable to detect eyes in image")
+                            found_eyes.append([face, None])
 
         return found_eyes
 
@@ -379,7 +475,7 @@ def load_images(paths):
 
     for path in paths:
         try:
-            img = cv.imshow(path, 1)
+            img = cv.imread(path, 1)
             if img is None:
                 print(f"WARNING: Unable to load image at {path}")
             else:
@@ -423,7 +519,7 @@ def interactive_image_viewer(images : list, window_name : str = 'Default'):
 
     cv.destroyAllWindows() # Destroy all open windows
 
-def save_images(images: list, names: list = None, dir: str = None, type=".jpg"):
+def save_images(images: list, name_prefix: str=None, dir: str = None, type=".jpg"):
     '''
     Saves a list of images with the specified type using OpenCV
     
@@ -431,8 +527,8 @@ def save_images(images: list, names: list = None, dir: str = None, type=".jpg"):
     ----------
     - images : list
         The list of images that are to be saved
-    - names : list[str]
-        Names for each of the images (error will be thrown if mistmatch in len)
+    - name_prefix : str
+        prefix for each of the images
     - dir : str
         Path to folder to save images (default to local) (will create directory if it doesnt exist)
     - type : str
@@ -444,10 +540,6 @@ def save_images(images: list, names: list = None, dir: str = None, type=".jpg"):
         print("ERROR: Cannot save images that don't exist")
         return
 
-    if (not (names is None)) and len(images) != len(names):
-        print("ERROR: Mismatch in length of image list and length of names to be assigned during save")
-        return
-
     if not (dir is None):
         is_dir = os.path.isdir(dir)
 
@@ -457,18 +549,18 @@ def save_images(images: list, names: list = None, dir: str = None, type=".jpg"):
             print(f"Created dir={dir}")
     
     for i,img in enumerate(images):
-        if names is None:
+        if name_prefix is None:
             cv.imwrite(os.path.join(dir, f"{i+1}{type}"), img)
         else:
-            cv.imwrite(os.path.join(dir, f"{names[i]}{type}"), img)
+            cv.imwrite(os.path.join(dir, f"{name_prefix}_{i}{type}"), img)
     
 def _create_argparser():
     parser = argparse.ArgumentParser()
 
     # Paths for cascade files
-    parser.add_argument('--face_cascade_path', type=str, default='TODO - DEFAULT PATH',
+    parser.add_argument('--face_cascade_path', type=str, default='classifiers/haarcascade_fontalface_default.xml',
                         help="Path to xml file containing information to be loaded into OpenCV CascadeClassifier()")
-    parser.add_argument('--eye_cascade_path', type=str, default='TODO - DEFAULT PATH',
+    parser.add_argument('--eye_cascade_path', type=str, default='classifiers/haarcascade_eye.xml',
                         help="Path to xml file containing information to be loaded into OpenCV CascadeClassifier()")
 
     # Paths for images
@@ -497,8 +589,23 @@ def _create_argparser():
 
     return parser
 
+def draw_boxes(image, coords: list):
+    '''
+    Takes an image and draws a red bounding box at all the passed coords. Returns a copy of the image with the drawn boxes
+    '''
+    img = np.copy(image)
+
+    for coord in coords:
+        if args.debug:
+            print(f"Adding rectangle with properties (x,y,w,h)={coord} to image")
+        cv.rectangle(img, (coord[0],coord[1]),(coord[0]+coord[2],coord[1]+coord[3]), (0,0,255),2)
+
+    return img
+
 if __name__ == "__main__":
-     
+    
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
     parser = _create_argparser()
 
     args = parser.parse_args()
@@ -533,60 +640,116 @@ if __name__ == "__main__":
     ----------------------
     Gamma Correction -> Grayscale -> DOG -> Contrast Equalization
     '''
-    
-    gamma_corrected = processor.adaptive_gamma_correction(images)
 
-    if args.debug:
-        interactive_image_viewer(gamma_corrected, "Gamma Corrected Images")
+    # gamma_corrected = processor.adaptive_gamma_correction(images)
 
-    grayscale = processor.convert_to_grayscale(gamma_corrected)
+    # if args.debug:
+    #     interactive_image_viewer(gamma_corrected, "Gamma Corrected Images")
+
+    grayscale = processor.convert_to_grayscale(images)
 
     if args.debug:
         interactive_image_viewer(grayscale, "Grayscale Images")
 
-    dog = processor.difference_of_gaussian(grayscale, args.k_size1, args.sigma1, args.k_size2, args.sigma2)
+    # dog = processor.difference_of_gaussian(grayscale, args.k_size1, args.sigma1, args.k_size2, args.sigma2)
 
-    if args.debug:
-        interactive_image_viewer(dog, "Difference of Gaussian Images")
+    # if args.debug:
+    #     interactive_image_viewer(dog, "Difference of Gaussian Images")
 
-    equalized = processor.contrast_equalization(dog, args.clip_limit, args.grid_size)
+    equalized = processor.contrast_equalization(grayscale, args.clip_limit, args.grid_size)
 
     if args.debug:
         interactive_image_viewer(equalized, "Constrast Equalized Images")
 
     # Save images
     print("Saving preprocessed images for later viewing")
-    for group,dir in progressbar.progressbar([[gamma_corrected,'gamma_corrected'], [grayscale,'grayscale'], [dog,'difference_of_gaussian'], [equalized,'contrast_equalized']]):
-        save_images(gamma_corrected, args.names, dir)
+    for group,prefix,dir in progressbar.progressbar([[grayscale,"gray",'grayscale'], [equalized,"equal",'contrast_equalized']]):
+        save_images(group, prefix, dir)
 
     # TODO - Detection Pipeline
     '''
     Detection Pipeline
     ------------------
-    Find Faces -> Rotate -> Redetect -> Scale -> Blur -> Save
+    Find Face -> Scale -> Find Eyes -> Rotate -> Redetect -> Blur -> Crop -> Save
     '''
     # Facial Detections
     # NOTE - Add args.min_size_face if min_size arg added to argparser
     image_face_list = face_finder.find_faces(equalized, args.scale_factor_face, args.min_neighbors_face)
 
-    # TODO - Function to write bounding boxes to face
-
     # Extract found faces
     faces = []
+    images_with_boxes = []
     print("Extracting faces for eye detection")
     for image in progressbar.progressbar(image_face_list):
-        for img, faces in image:
-            for face,coords in faces:
-                faces.append(face)
+        coords = []
+        for face in image[1]:
+                faces.append(face[0])
+                coords.append(face[1])
 
+        images_with_boxes.append(draw_boxes(cv.cvtColor(image[0],cv.COLOR_GRAY2BGR),coords))
+        
+    save_images(images_with_boxes,dir="detected_faces")
 
     if args.debug:
-        print("Image viewer for first faces detected")
+        print(f"Number of detected faces={len(faces)}")
+
+    if args.debug:
+        print("\nImage viewer for first faces detected")
         interactive_image_viewer(faces, "First Round of Face Processing")
 
+    # Scale Faces
+    faces = processor.scale_faces(faces,size=(150,150))
 
-    # TODO - Eye Detection
+    if args.debug:
+        print("\nImage viewer for scaled faces ")
+        interactive_image_viewer(faces, "Scaled Faces")
 
-    # TODO - Finish Main image processing code
+    # Find Eyes
+    face_and_eyes = face_finder.find_eyes(faces, args.scale_factor_eyes, args.min_neighbors_eyes)
+
+    # Align Images
+    aligned_images = processor.align_eyes(face_and_eyes)
+
+    if args.debug:
+        print("\nImage viewer for aligned faces")
+        interactive_image_viewer(aligned_images, "Rotated Images")
+
+    # Redetect Faces
+    new_image_face_list = face_finder.find_faces(aligned_images, args.scale_factor_face, args.min_neighbors_face)
+
+    # Extract found faces
+    new_faces = []
+    new_images_with_boxes = []
+    print("Extracting faces for eye detection")
+    for image in progressbar.progressbar(new_image_face_list):
+        coords = []
+        for face in image[1]:
+                new_faces.append(face[0])
+                coords.append(face[1])
+
+        new_images_with_boxes.append(draw_boxes(cv.cvtColor(image[0],cv.COLOR_GRAY2BGR),coords))
+        
+    save_images(new_images_with_boxes,dir="final_faces")
+
+    if args.debug:
+        print(f"New detected faces={len(new_faces)}")
+
+    if args.debug:
+        print("\nImage viewer for final detected faces")
+        interactive_image_viewer(new_faces, "Final Faces")
+
+    # Find Eyes
+    face_and_eyes = face_finder.find_eyes(new_faces, args.scale_factor_eyes, args.min_neighbors_eyes)
+
+    # Blur
+    blurred = processor.blur_eyes(face_and_eyes)
+
+    # Save
+    if args.debug:
+        print("\nImage viewer for blurred eyes")
+        interactive_image_viewer(new_faces, "Blurred Eyes")
+
+    save_images(blurred,"face",dir="final")
+
 
     

@@ -44,6 +44,25 @@ image and drawn onto a copy of the original
     - Total entropy is calculated by taking the entropy of the intensity probability distribution of all pixels up to some value *k*, and adding it to the entropy of the intensity probability distribution of all pixels after *k*
     - Total entropy is computed for all possible pixel values of *k* and the value with maximum entropy becomes the threshold value for image binarization
 ___
-## Portfolio Project
-[INFORMATION COMING SOON - I know the repo is archived, but I do intended on filling this information in any day now]
+## Portfolio Project: [Face Detection and Privacy](Portfolio%20Project/)
+- The purpose of this project was to implement a basic facial recognition algorithm, find the eyes within the face, and blur the detected area. Per the assignment instructions: **To address privacy concerns you may want to use data anonymization.  On images, this can be achieved by hiding features that could lead to a person or personal data identification, such as the person’s facial features or a license plate number.**
+- Face and eye detection were done using [OpenCV's haarcascade classifiers](https://github.com/opencv/opencv/tree/master/data/haarcascades)
+- The images are first converted to grayscale and then contrast equalized before any detection is done
 
+### Image Examples
+#### Starting
+![](Portfolio%20Project/Final%20Project/final1.jpg)
+
+#### Grayscale
+![](Portfolio%20Project/Final%20Project/grayscale/gray_0.jpg)
+
+#### Equalized
+![](Portfolio%20Project/Final%20Project/contrast_equalized/equal_0.jpg)
+
+#### Detected Faces
+![](Portfolio%20Project/Final%20Project/detected_faces/1.jpg)
+#### Cropped and Aligned Face
+![](Portfolio%20Project/Final%20Project/final_faces/1.jpg)
+
+#### Blurred Eyes
+![](Portfolio%20Project/Final%20Project/final/face_0.jpg)
