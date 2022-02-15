@@ -1,7 +1,7 @@
 # CSC 515 - Foundations of Computer Vision
 **Disclaimer:** These projects were built as a requirement for CSC 515: Foundations of Computer Vision at Colorado State University Global under the instruction of Dr. Brian Holbert. Unless otherwise noted, all programs were created to adhere to explicit guidelines as outlined in the assignment requirements I was given. Descriptions of each [programming assignment](#programming-assignments) and the [portfolio project](#portfolio-project) can be found below.
 
-*****This repository will be archived upon completion of the class.*****
+*****This class has been completed, so this repository is archived.*****
 ___
 
 ### Languages and Tools
