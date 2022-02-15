@@ -26,7 +26,23 @@ ___
 ## Programming Assignments
 ### Critical Thinking 3: [Tensorflow ANN Model](CT%203/)
 - A basic Tensorflow ANN model trained to model a simple mathematical function.
+### Critical Thinking 4: [Laplacian & Gaussian Filters for Different Kernel Windows](CT%204/)
+- A simple script to apply and view the effect of Laplacian and Gaussian filters on an image with three different kernel sizes
+### Critical Thinking 5: [Morphology Operations for Handwritten Text Enhancement](CT%205/)
+- A program which takes image of handwriting on a sticky note, binarizes the iamge, and applyes four morphological operations to it
+    - Opening
+    - Closing
+    - Erosion
+    - Dilation
+- Each resulting image is displayed for veiwing
 
+### Critical Thinking 6: [Adaptive Thresholding Scheme for Simple Objects](CT%206/)
+- This script contains an implementation of adaptive thresholding with an entropy based approach. The entropy for all threshold possibilities is calculated
+and the threshold level corresponding to the maximum entropy is chosen for binarization. Edges of objects are subsequently extracted from the binary 
+image and drawn onto a copy of the original
+- The idea behind entropy based threshholding for image binarization is rooted in the idea that binzarizing an image at the point of greatest entropy will bring the greatest order
+    - Total entropy is calculated by taking the entropy of the intensity probability distribution of all pixels up to some value *k*, and adding it to the entropy of the intensity probability distribution of all pixels after *k*
+    - Total entropy is computed for all possible pixel values of *k* and the value with maximum entropy becomes the threshold value for image binarization
 ___
 ## Portfolio Project
 [INFORMATION COMING SOON - I know the repo is archived, but I do intended on filling this information in any day now]
